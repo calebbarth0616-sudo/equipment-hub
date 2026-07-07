@@ -1,3 +1,10 @@
+// app/login/page.js — the LOG-IN page (the "/login" route).
+//
+// A smaller sibling of the signup page: same controlled-inputs form pattern,
+// same error/loading handling, just fewer fields and it calls signIn()
+// instead of signUp(). See app/signup/page.js for the fully-commented
+// walkthrough of this pattern.
+
 "use client";
 
 import Link from "next/link";

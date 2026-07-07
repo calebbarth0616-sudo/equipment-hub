@@ -1,4 +1,12 @@
-"use client";
+// app/signup/page.js — the SIGN-UP page (the "/signup" route).
+//
+// The most complete example of a FORM in the app. The pattern used here —
+// one piece of state per field, a submit handler that calls a lib/ data
+// function, error + loading states — is the same pattern every other form
+// (new donation, new request, org verification) will follow. Understand this
+// file and you understand most of the app's interactive code.
+
+"use client"; // runs in the browser: this page uses state and form events
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -8,27 +16,34 @@ import { signUp } from "@/lib/auth";
 export default function SignupPage() {
   const router = useRouter();
 
-  // One piece of state per form field — what's typed in lives here.
+  // One piece of state per form field. The inputs below are "controlled":
+  // what they display IS this state, and typing updates it via onChange.
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("donor");
-  const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [role, setRole] = useState("donor"); // "donor" | "org" — matches the profiles table
+  const [error, setError] = useState(""); // message shown in the red box, "" = no error
+  const [submitting, setSubmitting] = useState(false); // true while waiting on the backend
 
   async function handleSubmit(event) {
     event.preventDefault(); // stop the browser's default full-page reload
     setError("");
     setSubmitting(true);
     try {
+      // The page doesn't know or care HOW signUp works (mock today,
+      // Supabase after integration) — it only relies on the contract
+      // documented in lib/auth.js.
       await signUp({ name, email, password, role });
       router.push("/"); // success → go home
     } catch (err) {
+      // Failure: show the human-readable message and re-enable the button.
       setError(err.message);
       setSubmitting(false);
     }
   }
 
+  // Shared styling for all text inputs, kept in one variable so the inputs
+  // stay identical and a style tweak happens in exactly one place.
   const inputClasses =
     "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:ring-emerald-900";
 
@@ -40,10 +55,14 @@ export default function SignupPage() {
       </p>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-        {/* Role choice */}
+        {/* Role choice — two radio buttons styled as selectable cards.
+            The real <input type="radio"> is visually hidden (sr-only) but
+            still there, so keyboards and screen readers work normally. */}
         <fieldset>
           <legend className="mb-2 text-sm font-medium">I am a…</legend>
           <div className="grid grid-cols-2 gap-3">
+            {/* .map() turns each option object into a card — the standard
+                React way to render a list without repeating markup. */}
             {[
               { value: "donor", title: "Donor", detail: "I have equipment to give" },
               { value: "org", title: "School / League", detail: "My team needs equipment" },
@@ -52,8 +71,8 @@ export default function SignupPage() {
                 key={option.value}
                 className={`cursor-pointer rounded-xl border p-3 text-sm transition-colors ${
                   role === option.value
-                    ? "border-emerald-600 bg-emerald-50 dark:bg-emerald-950"
-                    : "border-zinc-300 hover:border-zinc-400 dark:border-zinc-700"
+                    ? "border-emerald-600 bg-emerald-50 dark:bg-emerald-950" // selected
+                    : "border-zinc-300 hover:border-zinc-400 dark:border-zinc-700" // not selected
                 }`}
               >
                 <input
@@ -74,6 +93,8 @@ export default function SignupPage() {
         </fieldset>
 
         <div>
+          {/* label's htmlFor + input's id link them: clicking the label
+              focuses the input, and screen readers announce it. */}
           <label htmlFor="name" className="mb-1 block text-sm font-medium">
             {role === "org" ? "Organization name" : "Full name"}
           </label>
@@ -115,12 +136,16 @@ export default function SignupPage() {
           />
         </div>
 
+        {/* Error box — only rendered when there IS an error ("&&" pattern:
+            left side false → render nothing). */}
         {error && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
             {error}
           </p>
         )}
 
+        {/* Disabled while submitting so a slow network can't cause
+            double-signups from double-clicks. */}
         <button
           type="submit"
           disabled={submitting}
