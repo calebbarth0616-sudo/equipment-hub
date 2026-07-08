@@ -57,6 +57,12 @@ export default function Navbar() {
               condition is true, otherwise B. Here: logged in vs logged out. */}
           {user ? (
             <>
+              {/* Donors and orgs each get a link to their own list page. */}
+              {user.role === "donor" && (
+                <Link href="/donations" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">
+                  My donations
+                </Link>
+              )}
               {/* "hidden sm:inline" = hidden on phones, visible on wider
                   screens — the name is nice-to-have, not essential. */}
               <span className="hidden text-zinc-500 sm:inline dark:text-zinc-400">
