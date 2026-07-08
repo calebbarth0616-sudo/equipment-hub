@@ -53,6 +53,10 @@ export default function Navbar() {
         </Link>
 
         <div className="flex items-center gap-4 text-sm font-medium">
+          {/* Browse is the public storefront — visible to everyone. */}
+          <Link href="/browse" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">
+            Browse
+          </Link>
           {/* CONDITIONAL RENDERING: `condition ? A : B` shows A when the
               condition is true, otherwise B. Here: logged in vs logged out. */}
           {user ? (
@@ -61,6 +65,11 @@ export default function Navbar() {
               {user.role === "donor" && (
                 <Link href="/donations" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">
                   My donations
+                </Link>
+              )}
+              {user.role === "org" && (
+                <Link href="/requests" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">
+                  My requests
                 </Link>
               )}
               {/* "hidden sm:inline" = hidden on phones, visible on wider
