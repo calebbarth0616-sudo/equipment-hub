@@ -31,7 +31,8 @@ export default function Navbar() {
   // "auth-changed" event that lib/auth.js fires on every login/logout, so
   // the navbar updates instantly without a page refresh.
   useEffect(() => {
-    const refresh = () => setUser(getCurrentUser());
+    // getCurrentUser is async (it checks the real session), so we await it.
+    const refresh = async () => setUser(await getCurrentUser());
     refresh();
     window.addEventListener("auth-changed", refresh);
     // The returned function is cleanup: React runs it if the navbar is ever

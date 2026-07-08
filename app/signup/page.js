@@ -24,22 +24,43 @@ export default function SignupPage() {
   const [role, setRole] = useState("donor"); // "donor" | "org" — matches the profiles table
   const [error, setError] = useState(""); // message shown in the red box, "" = no error
   const [submitting, setSubmitting] = useState(false); // true while waiting on the backend
+  const [confirmationSent, setConfirmationSent] = useState(false); // signed up, awaiting email click
 
   async function handleSubmit(event) {
     event.preventDefault(); // stop the browser's default full-page reload
     setError("");
     setSubmitting(true);
     try {
-      // The page doesn't know or care HOW signUp works (mock today,
-      // Supabase after integration) — it only relies on the contract
-      // documented in lib/auth.js.
-      await signUp({ name, email, password, role });
-      router.push("/"); // success → go home
+      // The page doesn't know or care HOW signUp works — it only relies on
+      // the contract documented in lib/auth.js.
+      const { needsEmailConfirmation } = await signUp({ name, email, password, role });
+      if (needsEmailConfirmation) {
+        setConfirmationSent(true); // swap the form for the "check email" screen
+      } else {
+        router.push("/"); // already logged in → go home
+      }
     } catch (err) {
       // Failure: show the human-readable message and re-enable the button.
       setError(err.message);
       setSubmitting(false);
     }
+  }
+
+  // After a successful signup, show this instead of the form.
+  if (confirmationSent) {
+    return (
+      <main className="mx-auto w-full max-w-md flex-1 px-4 py-12 text-center">
+        <h1 className="text-2xl font-bold">Check your email 📬</h1>
+        <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+          We sent a confirmation link to <span className="font-semibold">{email}</span>.
+          Click it to activate your account, then come back and{" "}
+          <Link href="/login" className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+            log in
+          </Link>
+          .
+        </p>
+      </main>
+    );
   }
 
   // Shared styling for all text inputs, kept in one variable so the inputs
