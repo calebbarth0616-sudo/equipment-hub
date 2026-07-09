@@ -72,6 +72,9 @@ export default function Navbar() {
                   My requests
                 </Link>
               )}
+              <Link href="/dashboard" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">
+                Matches
+              </Link>
               {/* "hidden sm:inline" = hidden on phones, visible on wider
                   screens — the name is nice-to-have, not essential. */}
               <span className="hidden text-zinc-500 sm:inline dark:text-zinc-400">

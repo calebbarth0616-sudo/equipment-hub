@@ -8,8 +8,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAvailableDonations } from "@/lib/donations";
+import { getCurrentUser } from "@/lib/auth";
+import { getAvailableDonations, getMyDonations } from "@/lib/donations";
 import { getOpenRequests } from "@/lib/requests";
+import { proposeMatch } from "@/lib/matches";
 import { SPORTS, CONDITION_LABELS } from "@/lib/constants";
 
 export default function BrowsePage() {
@@ -18,6 +20,13 @@ export default function BrowsePage() {
   const [requests, setRequests] = useState(null);
   const [donations, setDonations] = useState(null);
   const [error, setError] = useState("");
+
+  // Matching flow state (donors only):
+  const [user, setUser] = useState(null);
+  const [myAvailable, setMyAvailable] = useState([]); // my donations still available
+  const [offeringFor, setOfferingFor] = useState(null); // request id with the offer panel open
+  const [selectedDonationId, setSelectedDonationId] = useState("");
+  const [notice, setNotice] = useState(""); // green success banner
 
   // Load both lists up front; switching tabs is then instant.
   useEffect(() => {
@@ -29,12 +38,42 @@ export default function BrowsePage() {
         ]);
         setRequests(requestsResult.requests);
         setDonations(donationsResult.donations);
+
+        // If a donor is logged in, also fetch THEIR donations so the
+        // "Offer" panel has something to offer.
+        const currentUser = await getCurrentUser();
+        setUser(currentUser);
+        if (currentUser?.role === "donor") {
+          const mine = await getMyDonations();
+          setMyAvailable(mine.donations.filter((d) => d.status === "available"));
+        }
       } catch (err) {
         setError(err.message);
       }
     }
     load();
   }, []);
+
+  async function handleOffer(requestId) {
+    if (!selectedDonationId) return;
+    setError("");
+    try {
+      await proposeMatch({ donationId: selectedDonationId, requestId });
+      // Refresh everything: the request leaves the open pool, the donation
+      // leaves my available list — the page should reflect that instantly.
+      const [requestsResult, mine] = await Promise.all([
+        getOpenRequests(),
+        getMyDonations(),
+      ]);
+      setRequests(requestsResult.requests);
+      setMyAvailable(mine.donations.filter((d) => d.status === "available"));
+      setOfferingFor(null);
+      setSelectedDonationId("");
+      setNotice("Offer sent! You can track it on your Matches page.");
+    } catch (err) {
+      setError(err.message);
+    }
+  }
 
   // Apply the sport filter to whichever list the active tab shows.
   // .filter() = keep only the items the test returns true for.
@@ -91,6 +130,12 @@ export default function BrowsePage() {
         </p>
       )}
 
+      {notice && (
+        <p className="mt-6 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+          {notice}
+        </p>
+      )}
+
       {filtered === null && !error && (
         <p className="mt-10 text-center text-sm text-zinc-500">Loading…</p>
       )}
@@ -128,7 +173,55 @@ export default function BrowsePage() {
                   {entry.need_statement}
                 </p>
               )}
-              {/* Week 3: donors get an "Offer one of my donations" button here. */}
+
+              {/* The matching flow: donors with available donations get an
+                  Offer button on each request; clicking it opens a small
+                  inline panel to pick which donation to offer. */}
+              {tab === "requests" && user?.role === "donor" && myAvailable.length > 0 && (
+                <div className="mt-3">
+                  {offeringFor === entry.id ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        value={selectedDonationId}
+                        onChange={(e) => setSelectedDonationId(e.target.value)}
+                        className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                      >
+                        <option value="" disabled>
+                          Choose a donation to offer…
+                        </option>
+                        {myAvailable.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.item} (qty {d.quantity}, {CONDITION_LABELS[d.condition]})
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => handleOffer(entry.id)}
+                        disabled={!selectedDonationId}
+                        className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
+                      >
+                        Send offer
+                      </button>
+                      <button
+                        onClick={() => {
+                          setOfferingFor(null);
+                          setSelectedDonationId("");
+                        }}
+                        className="text-sm text-zinc-500 hover:underline"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setOfferingFor(entry.id)}
+                      className="rounded-lg border border-emerald-600 px-3 py-1.5 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950"
+                    >
+                      Offer one of my donations
+                    </button>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>
