@@ -13,7 +13,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getCurrentUser } from "@/lib/auth";
-import { getMyMatches, acceptMatch, declineMatch } from "@/lib/matches";
+import { getMyMatches, acceptMatch, declineMatch, getMatchContact } from "@/lib/matches";
 
 const STATUS_STYLES = {
   proposed: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
@@ -31,7 +31,7 @@ const STATUS_LABELS = {
   cancelled: "declined",
 };
 
-function MatchCard({ match, isOrg, onAnswer }) {
+function MatchCard({ match, isOrg, onAnswer, contact, onShowContact }) {
   return (
     <li className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
       <div className="flex items-start justify-between gap-4">
@@ -52,6 +52,30 @@ function MatchCard({ match, isOrg, onAnswer }) {
           >
             {STATUS_LABELS[match.status]}
           </span>
+
+          {/* CONTACT REVEAL: once both sides have said yes, they may see
+              each other. The get_match_contact database function enforces
+              who may ask and when — this button just asks. */}
+          {["accepted", "handed_to_nonprofit", "delivered"].includes(match.status) && (
+            <div className="mt-2">
+              {contact ? (
+                <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                  {isOrg ? "Donor" : "Team"} contact:{" "}
+                  <span className="font-medium">{contact.name}</span> ·{" "}
+                  <a href={`mailto:${contact.email}`} className="text-emerald-700 hover:underline dark:text-emerald-400">
+                    {contact.email}
+                  </a>
+                </p>
+              ) : (
+                <button
+                  onClick={() => onShowContact(match.id)}
+                  className="text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+                >
+                  Show contact info
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Only the org answers, and only while it's still proposed. */}
@@ -80,6 +104,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [matches, setMatches] = useState(null); // null = loading
+  const [contacts, setContacts] = useState({}); // matchId -> {name, email}
   const [error, setError] = useState("");
 
   async function loadMatches() {
@@ -103,6 +128,17 @@ export default function DashboardPage() {
     }
     load();
   }, [router]);
+
+  async function handleShowContact(matchId) {
+    try {
+      const contact = await getMatchContact(matchId);
+      // "...prev" copies the existing map, then adds this match's entry —
+      // React state is replaced, never modified in place.
+      setContacts((prev) => ({ ...prev, [matchId]: contact }));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
 
   async function handleAnswer(matchId, action) {
     if (action === "decline" && !confirm("Decline this offer? The donation returns to the public pool.")) {
@@ -163,7 +199,14 @@ export default function DashboardPage() {
       {proposed.length > 0 && (
         <ul className="mt-6 space-y-3">
           {proposed.map((match) => (
-            <MatchCard key={match.id} match={match} isOrg={isOrg} onAnswer={handleAnswer} />
+            <MatchCard
+              key={match.id}
+              match={match}
+              isOrg={isOrg}
+              onAnswer={handleAnswer}
+              contact={contacts[match.id]}
+              onShowContact={handleShowContact}
+            />
           ))}
         </ul>
       )}
@@ -177,7 +220,14 @@ export default function DashboardPage() {
           )}
           <ul className="mt-3 space-y-3">
             {rest.map((match) => (
-              <MatchCard key={match.id} match={match} isOrg={isOrg} onAnswer={handleAnswer} />
+              <MatchCard
+              key={match.id}
+              match={match}
+              isOrg={isOrg}
+              onAnswer={handleAnswer}
+              contact={contacts[match.id]}
+              onShowContact={handleShowContact}
+            />
             ))}
           </ul>
         </>

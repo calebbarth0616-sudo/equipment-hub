@@ -1,46 +1,96 @@
-// app/page.js — the HOME PAGE (the "/" route).
+// app/page.js — the LANDING PAGE (the "/" route).
 //
-// This is the simplest kind of component in the app: it takes no input and
-// has no state — it just returns JSX (the HTML-like syntax React uses)
-// describing what to show. Because it needs no interactivity, there is no
-// "use client" line at the top; Next.js renders it on the server, which is
-// the default and the fastest option.
-//
-// NOTE: this is an interim version. The full landing page (mission section,
-// "How it works" steps, real impact stats) is scheduled for Week 3 of the
-// plan, right before the nonprofit demo.
+// The storefront window: mission, how it works, and two ways in. This is
+// the first thing the nonprofit partner (and every donor a school forwards
+// the link to) will see — clarity beats cleverness here.
 
 import Link from "next/link";
 
+const STEPS = [
+  {
+    title: "Donors list equipment",
+    detail:
+      "Schools and individuals post gear their teams have outgrown — helmets, cleats, balls, pads — with condition and quantity.",
+  },
+  {
+    title: "Teams tell their story",
+    detail:
+      "Underserved schools and community leagues post what they need and why. Donors browse requests and offer their equipment directly.",
+  },
+  {
+    title: "Matches get delivered",
+    detail:
+      "When a team accepts an offer, our nonprofit logistics partner handles the handoff — donors don't ship, teams don't chase.",
+  },
+];
+
 export default function Home() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-4 py-24 text-center">
-      {/* The long strings of class names are Tailwind CSS: each class is one
-          small style rule, e.g. mt-4 = margin-top, text-lg = larger text.
-          Styling lives right here in the markup instead of a separate file. */}
-      <h1 className="max-w-2xl text-4xl font-bold tracking-tight sm:text-5xl">
-        Give game-day gear a second life.
-      </h1>
-      <p className="mt-4 max-w-xl text-lg text-zinc-600 dark:text-zinc-400">
-        Equipment Hub connects donors who have sports equipment to spare with
-        underserved schools and community leagues that need it.
-      </p>
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-        {/* <Link> is Next.js's version of an <a> tag — it switches pages
-            instantly without a full browser reload. */}
+    <div className="flex flex-1 flex-col">
+      {/* Hero */}
+      <section className="flex flex-col items-center px-4 py-24 text-center">
+        <h1 className="max-w-2xl text-4xl font-bold tracking-tight sm:text-5xl">
+          Give game-day gear a second life.
+        </h1>
+        <p className="mt-4 max-w-xl text-lg text-zinc-600 dark:text-zinc-400">
+          Equipment Hub connects donors who have sports equipment to spare with
+          underserved schools and community leagues that need it — and gets it
+          delivered.
+        </p>
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <Link
+            href="/signup"
+            className="rounded-lg bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+          >
+            Donate equipment
+          </Link>
+          <Link
+            href="/signup"
+            className="rounded-lg border border-zinc-300 px-6 py-3 text-sm font-semibold transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          >
+            Request equipment for my team
+          </Link>
+        </div>
         <Link
-          href="/signup"
-          className="rounded-lg bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+          href="/browse"
+          className="mt-6 text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400"
         >
-          Donate equipment
+          Or just browse what teams need right now →
         </Link>
-        <Link
-          href="/signup"
-          className="rounded-lg border border-zinc-300 px-6 py-3 text-sm font-semibold transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-        >
-          Request equipment for my team
-        </Link>
-      </div>
-    </main>
+      </section>
+
+      {/* How it works */}
+      <section className="border-t border-zinc-200 bg-zinc-50 px-4 py-16 dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="mx-auto max-w-4xl">
+          <h2 className="text-center text-2xl font-bold">How it works</h2>
+          <div className="mt-10 grid gap-8 sm:grid-cols-3">
+            {STEPS.map((step, index) => (
+              <div key={step.title} className="text-center sm:text-left">
+                <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-sm font-bold text-white sm:mx-0">
+                  {index + 1}
+                </div>
+                <h3 className="mt-3 font-semibold">{step.title}</h3>
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                  {step.detail}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Trust note */}
+      <section className="px-4 py-16 text-center">
+        <div className="mx-auto max-w-xl">
+          <h2 className="text-xl font-bold">Built on trust</h2>
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            Every school and league is verified before receiving donations, and
+            equipment moves through a dedicated nonprofit partner — so donors
+            know their gear lands where it's needed, and teams know offers are
+            real.
+          </p>
+        </div>
+      </section>
+    </div>
   );
 }

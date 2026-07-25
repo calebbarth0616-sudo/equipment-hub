@@ -168,6 +168,14 @@ export default function BrowsePage() {
                   {tab === "donations" && ` · ${CONDITION_LABELS[entry.condition]}`}
                 </span>
               </p>
+              {/* Org name arrives embedded by getOpenRequests' nested select
+                  — but only if the profiles visibility policy (Run 11)
+                  allows it; entry.org is null otherwise, so render safely. */}
+              {tab === "requests" && entry.org?.name && (
+                <p className="mt-0.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  Requested by {entry.org.name}
+                </p>
+              )}
               {tab === "requests" && (
                 <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                   {entry.need_statement}

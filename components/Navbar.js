@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getCurrentUser, signOut } from "@/lib/auth";
+import { getMyMatches } from "@/lib/matches";
 
 export default function Navbar() {
   // useRouter lets us send the visitor to another page from code
@@ -25,6 +26,7 @@ export default function Navbar() {
   // STATE: data that React watches — when it changes (via setUser), React
   // automatically redraws this component. `user` is null when logged out.
   const [user, setUser] = useState(null);
+  const [pendingCount, setPendingCount] = useState(0); // proposed matches
 
   // EFFECT: code that runs after the component first appears on screen.
   // Here we (1) read the current login state, and (2) subscribe to the
@@ -32,7 +34,22 @@ export default function Navbar() {
   // the navbar updates instantly without a page refresh.
   useEffect(() => {
     // getCurrentUser is async (it checks the real session), so we await it.
-    const refresh = async () => setUser(await getCurrentUser());
+    const refresh = async () => {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+      // Badge count: how many matches are awaiting an answer. RLS already
+      // limits the list to the viewer's own matches.
+      if (currentUser) {
+        try {
+          const { matches } = await getMyMatches();
+          setPendingCount(matches.filter((m) => m.status === "proposed").length);
+        } catch {
+          setPendingCount(0); // a failed count should never break the navbar
+        }
+      } else {
+        setPendingCount(0);
+      }
+    };
     refresh();
     window.addEventListener("auth-changed", refresh);
     // The returned function is cleanup: React runs it if the navbar is ever
@@ -74,6 +91,12 @@ export default function Navbar() {
               )}
               <Link href="/dashboard" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">
                 Matches
+                {/* Badge: only rendered when something needs attention. */}
+                {pendingCount > 0 && (
+                  <span className="ml-1.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-xs font-bold text-white">
+                    {pendingCount}
+                  </span>
+                )}
               </Link>
               {/* "hidden sm:inline" = hidden on phones, visible on wider
                   screens — the name is nice-to-have, not essential. */}
