@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { getMyRequests, closeRequest } from "@/lib/requests";
+import { getMyOrganization } from "@/lib/orgs";
 
 function StatusBadge({ status }) {
   const styles = {
@@ -26,6 +27,7 @@ function StatusBadge({ status }) {
 export default function MyRequestsPage() {
   const router = useRouter();
   const [requests, setRequests] = useState(null); // null = still loading
+  const [verification, setVerification] = useState(null); // org's status or "none"
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -36,8 +38,12 @@ export default function MyRequestsPage() {
         return;
       }
       try {
-        const result = await getMyRequests();
+        const [result, { organization }] = await Promise.all([
+          getMyRequests(),
+          getMyOrganization(),
+        ]);
         setRequests(result.requests);
+        setVerification(organization?.verification_status ?? "none");
       } catch (err) {
         setError(err.message);
       }
@@ -72,6 +78,21 @@ export default function MyRequestsPage() {
         <p className="mt-6 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
           {error}
         </p>
+      )}
+
+      {/* Verification nudge: donors can't offer until the team is verified,
+          so make the next step impossible to miss. */}
+      {verification && verification !== "verified" && (
+        <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          {verification === "pending"
+            ? "Your verification is under review. Donors can see your requests but can't make offers until you're approved."
+            : verification === "rejected"
+              ? "Your verification wasn't approved — please review the note and resubmit."
+              : "Your team isn't verified yet, so donors can't offer equipment to your requests."}{" "}
+          <Link href="/verify" className="font-semibold underline">
+            {verification === "pending" ? "View status" : "Verify now"}
+          </Link>
+        </div>
       )}
 
       {requests === null && !error && (

@@ -15,7 +15,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getCurrentUser, signOut } from "@/lib/auth";
+import { getCurrentUser, getMyProfile, signOut } from "@/lib/auth";
 import { getMyMatches } from "@/lib/matches";
 
 export default function Navbar() {
@@ -27,6 +27,7 @@ export default function Navbar() {
   // automatically redraws this component. `user` is null when logged out.
   const [user, setUser] = useState(null);
   const [pendingCount, setPendingCount] = useState(0); // proposed matches
+  const [isAdmin, setIsAdmin] = useState(false); // from the profiles table, not metadata
 
   // EFFECT: code that runs after the component first appears on screen.
   // Here we (1) read the current login state, and (2) subscribe to the
@@ -41,13 +42,16 @@ export default function Navbar() {
       // limits the list to the viewer's own matches.
       if (currentUser) {
         try {
-          const { matches } = await getMyMatches();
+          const [{ matches }, profile] = await Promise.all([getMyMatches(), getMyProfile()]);
           setPendingCount(matches.filter((m) => m.status === "proposed").length);
+          setIsAdmin(profile?.role === "admin");
         } catch {
           setPendingCount(0); // a failed count should never break the navbar
+          setIsAdmin(false);
         }
       } else {
         setPendingCount(0);
+        setIsAdmin(false);
       }
     };
     refresh();
@@ -85,8 +89,18 @@ export default function Navbar() {
                 </Link>
               )}
               {user.role === "org" && (
-                <Link href="/requests" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">
-                  My requests
+                <>
+                  <Link href="/requests" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">
+                    My requests
+                  </Link>
+                  <Link href="/verify" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">
+                    Verification
+                  </Link>
+                </>
+              )}
+              {isAdmin && (
+                <Link href="/admin" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">
+                  Admin
                 </Link>
               )}
               <Link href="/dashboard" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">

@@ -14,6 +14,15 @@ import { getOpenRequests } from "@/lib/requests";
 import { proposeMatch } from "@/lib/matches";
 import { SPORTS, CONDITION_LABELS } from "@/lib/constants";
 
+// The org's verification status arrives nested two levels deep
+// (request.org.organizations). Supabase may hand back the organizations
+// part as an object or a one-item array depending on version — handle both.
+function isVerified(request) {
+  const org = request.org?.organizations;
+  const record = Array.isArray(org) ? org[0] : org;
+  return record?.verification_status === "verified";
+}
+
 export default function BrowsePage() {
   const [tab, setTab] = useState("requests"); // "requests" | "donations"
   const [sportFilter, setSportFilter] = useState("all");
@@ -173,7 +182,16 @@ export default function BrowsePage() {
                   allows it; entry.org is null otherwise, so render safely. */}
               {tab === "requests" && entry.org?.name && (
                 <p className="mt-0.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                  Requested by {entry.org.name}
+                  Requested by {entry.org.name}{" "}
+                  {isVerified(entry) ? (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                      verified ✓
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800">
+                      pending verification
+                    </span>
+                  )}
                 </p>
               )}
               {tab === "requests" && (
@@ -185,7 +203,10 @@ export default function BrowsePage() {
               {/* The matching flow: donors with available donations get an
                   Offer button on each request; clicking it opens a small
                   inline panel to pick which donation to offer. */}
-              {tab === "requests" && user?.role === "donor" && myAvailable.length > 0 && (
+              {/* Offers only go to VERIFIED teams — the propose_match
+                  function enforces this too; hiding the button just avoids
+                  a confusing error. */}
+              {tab === "requests" && user?.role === "donor" && myAvailable.length > 0 && isVerified(entry) && (
                 <div className="mt-3">
                   {offeringFor === entry.id ? (
                     <div className="flex flex-wrap items-center gap-2">
