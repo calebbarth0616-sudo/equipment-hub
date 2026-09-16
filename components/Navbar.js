@@ -103,6 +103,9 @@ export default function Navbar() {
                   Admin
                 </Link>
               )}
+              <Link href="/profile" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">
+                Location
+              </Link>
               <Link href="/dashboard" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">
                 Matches
                 {/* Badge: only rendered when something needs attention. */}

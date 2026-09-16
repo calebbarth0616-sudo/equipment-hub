@@ -7,12 +7,15 @@
 
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getCurrentUser } from "@/lib/auth";
-import { getAvailableDonations, getMyDonations } from "@/lib/donations";
-import { getOpenRequests } from "@/lib/requests";
+import { getCurrentUser, getMyProfile } from "@/lib/auth";
+import { getAvailableDonations, getMyDonations, getNearbyAvailableDonations } from "@/lib/donations";
+import { getOpenRequests, getNearbyOpenRequests } from "@/lib/requests";
 import { proposeMatch } from "@/lib/matches";
 import { SPORTS, CONDITION_LABELS } from "@/lib/constants";
+
+const MILE_OPTIONS = [10, 25, 50, 100];
 
 // The org's verification status arrives nested two levels deep
 // (request.org.organizations). Supabase may hand back the organizations
@@ -37,24 +40,43 @@ export default function BrowsePage() {
   const [selectedDonationId, setSelectedDonationId] = useState("");
   const [notice, setNotice] = useState(""); // green success banner
 
+  // Distance filter state. hasLocation is null while we don't yet know —
+  // avoids flashing "set your location" before the profile check finishes.
+  const [hasLocation, setHasLocation] = useState(null);
+  const [nearMe, setNearMe] = useState(false);
+  const [maxMiles, setMaxMiles] = useState(25);
+
+  // Fetches whichever pair of lists the current filter state calls for —
+  // shared by the initial load and by toggling "Near me".
+  async function fetchLists(useDistance) {
+    const [requestsResult, donationsResult] = await Promise.all([
+      useDistance ? getNearbyOpenRequests(maxMiles) : getOpenRequests(),
+      useDistance ? getNearbyAvailableDonations(maxMiles) : getAvailableDonations(),
+    ]);
+    setRequests(requestsResult.requests);
+    setDonations(donationsResult.donations);
+  }
+
   // Load both lists up front; switching tabs is then instant.
   useEffect(() => {
     async function load() {
       try {
-        const [requestsResult, donationsResult] = await Promise.all([
-          getOpenRequests(),
-          getAvailableDonations(),
-        ]);
-        setRequests(requestsResult.requests);
-        setDonations(donationsResult.donations);
+        await fetchLists(false);
 
-        // If a donor is logged in, also fetch THEIR donations so the
-        // "Offer" panel has something to offer.
+        // If someone's logged in, check whether they've set a location
+        // (unlocks the "Near me" filter) and, for donors, fetch THEIR
+        // donations so the "Offer" panel has something to offer.
         const currentUser = await getCurrentUser();
         setUser(currentUser);
-        if (currentUser?.role === "donor") {
-          const mine = await getMyDonations();
-          setMyAvailable(mine.donations.filter((d) => d.status === "available"));
+        if (currentUser) {
+          const profile = await getMyProfile();
+          setHasLocation(Boolean(profile?.lat && profile?.lng));
+          if (currentUser.role === "donor") {
+            const mine = await getMyDonations();
+            setMyAvailable(mine.donations.filter((d) => d.status === "available"));
+          }
+        } else {
+          setHasLocation(false);
         }
       } catch (err) {
         setError(err.message);
@@ -63,6 +85,31 @@ export default function BrowsePage() {
     load();
   }, []);
 
+  async function handleToggleNearMe(enabled) {
+    setNearMe(enabled);
+    setError("");
+    try {
+      await fetchLists(enabled);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleMilesChange(miles) {
+    setMaxMiles(miles);
+    if (!nearMe) return; // no need to refetch until "Near me" is actually on
+    try {
+      const [requestsResult, donationsResult] = await Promise.all([
+        getNearbyOpenRequests(miles),
+        getNearbyAvailableDonations(miles),
+      ]);
+      setRequests(requestsResult.requests);
+      setDonations(donationsResult.donations);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function handleOffer(requestId) {
     if (!selectedDonationId) return;
     setError("");
@@ -70,11 +117,8 @@ export default function BrowsePage() {
       await proposeMatch({ donationId: selectedDonationId, requestId });
       // Refresh everything: the request leaves the open pool, the donation
       // leaves my available list — the page should reflect that instantly.
-      const [requestsResult, mine] = await Promise.all([
-        getOpenRequests(),
-        getMyDonations(),
-      ]);
-      setRequests(requestsResult.requests);
+      // Respect whichever filter (all vs. near me) is currently active.
+      const [, mine] = await Promise.all([fetchLists(nearMe), getMyDonations()]);
       setMyAvailable(mine.donations.filter((d) => d.status === "available"));
       setOfferingFor(null);
       setSelectedDonationId("");
@@ -119,18 +163,52 @@ export default function BrowsePage() {
           </button>
         </div>
 
-        <select
-          value={sportFilter}
-          onChange={(e) => setSportFilter(e.target.value)}
-          className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-        >
-          <option value="all">All sports</option>
-          {SPORTS.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Distance filter: only usable once the viewer has set a
+              location on their profile — otherwise point them there. */}
+          {hasLocation === false && (
+            <Link href="/profile" className="text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+              Set your location to filter by distance
+            </Link>
+          )}
+          {hasLocation && (
+            <label className="flex items-center gap-1.5 text-sm">
+              <input
+                type="checkbox"
+                checked={nearMe}
+                onChange={(e) => handleToggleNearMe(e.target.checked)}
+                className="h-4 w-4 rounded border-zinc-300"
+              />
+              Near me
+            </label>
+          )}
+          {hasLocation && nearMe && (
+            <select
+              value={maxMiles}
+              onChange={(e) => handleMilesChange(Number(e.target.value))}
+              className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            >
+              {MILE_OPTIONS.map((m) => (
+                <option key={m} value={m}>
+                  within {m} miles
+                </option>
+              ))}
+            </select>
+          )}
+
+          <select
+            value={sportFilter}
+            onChange={(e) => setSportFilter(e.target.value)}
+            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+          >
+            <option value="all">All sports</option>
+            {SPORTS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {error && (
@@ -175,6 +253,10 @@ export default function BrowsePage() {
                 <span className="ml-2 font-normal text-zinc-500 dark:text-zinc-400">
                   · {entry.sport} · qty {entry.quantity}
                   {tab === "donations" && ` · ${CONDITION_LABELS[entry.condition]}`}
+                  {/* Only present when the "Near me" filter fetched this
+                      row — the plain (non-distance) queries never set it. */}
+                  {typeof entry.distance_miles === "number" &&
+                    ` · ~${Math.round(entry.distance_miles)} mi away`}
                 </span>
               </p>
               {/* Org name arrives embedded by getOpenRequests' nested select
