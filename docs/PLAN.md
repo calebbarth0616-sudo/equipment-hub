@@ -38,3 +38,10 @@ Progress log:
   getNearby*/nearby_* RPCs, Browse "Near me" filter + distance badges.
   Caleb has two migrations queued to run: 14+15 (Week A, still pending
   confirmation) and 16 (Week B, new).
+- Sep 16 (late): Caleb ran migrations 14–16, promoted bare gmail to admin,
+  verified both loops live. Security pass shipped — migration 17 (role
+  enforcement on posting, decline/closed fix, get_public_results),
+  /results, /privacy, /terms, footer, donor-school outreach template
+  (docs/pitch/04). Caleb to run migration 17 next session. Remaining:
+  outreach emails (Caleb, morning of Sep 17), real onboarding, pilot
+  matches to delivered.
