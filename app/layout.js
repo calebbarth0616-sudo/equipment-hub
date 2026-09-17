@@ -10,6 +10,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 // next/font downloads these Google Fonts at build time and serves them from
 // our own site (faster, and no request to Google from visitors' browsers).
@@ -40,6 +41,7 @@ export default function RootLayout({ children }) {
       <body className="min-h-full flex flex-col">
         <Navbar />
         {children}
+        <Footer />
       </body>
     </html>
   );
