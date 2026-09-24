@@ -5,7 +5,9 @@
 // home. The database enforces the same rule independently through the
 // is_admin() policies, so even a tampered browser gets empty data.
 //
-// Sections: verification queue (the important one), stats, listings.
+// Sections: verification queue, deliveries in progress (advance accepted
+// matches to delivered — the only way anything reaches /results), stats,
+// listings.
 
 "use client";
 
@@ -13,6 +15,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getMyProfile } from "@/lib/auth";
 import { getPendingOrgs, getDocumentUrl, reviewOrg } from "@/lib/orgs";
+import { getMyMatches, advanceMatch } from "@/lib/matches";
 import { supabase } from "@/lib/supabase";
 
 const ORG_TYPE_LABELS = {
@@ -66,9 +69,32 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
+  // Matches mid-delivery. Admins see every match (migration 14 policy), so
+  // getMyMatches() returns all of them here.
+  const [inProgress, setInProgress] = useState(null);
+
   async function loadQueue() {
     const { organizations } = await getPendingOrgs();
     setPending(organizations);
+  }
+
+  async function loadDeliveries() {
+    const { matches } = await getMyMatches();
+    setInProgress(
+      matches.filter((m) => m.status === "accepted" || m.status === "handed_to_nonprofit")
+    );
+  }
+
+  async function handleAdvance(match, status) {
+    const label = status === "delivered" ? "delivered" : "handed to the nonprofit";
+    if (!confirm(`Mark "${match.donation.item}" as ${label}?`)) return;
+    try {
+      await advanceMatch(match.id, status);
+      setNotice(`"${match.donation.item}" marked ${label}.`);
+      await loadDeliveries();
+    } catch (err) {
+      setError(err.message);
+    }
   }
 
   useEffect(() => {
@@ -83,7 +109,7 @@ export default function AdminPage() {
           router.push("/");
           return;
         }
-        await loadQueue();
+        await Promise.all([loadQueue(), loadDeliveries()]);
         const [donationCount, requestCount, matchCount, deliveredCount, donationRows, requestRows] =
           await Promise.all([
             supabase.from("donations").select("*", { count: "exact", head: true }),
@@ -207,6 +233,46 @@ export default function AdminPage() {
                     Reject
                   </button>
                 </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Deliveries in progress */}
+      <h2 className="mt-10 text-lg font-semibold">Deliveries in progress</h2>
+      {inProgress !== null && inProgress.length === 0 && (
+        <p className="mt-3 text-sm text-zinc-500">No accepted matches waiting on delivery.</p>
+      )}
+      {inProgress !== null && inProgress.length > 0 && (
+        <ul className="mt-3 space-y-3">
+          {inProgress.map((match) => (
+            <li key={match.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+              <div>
+                <p className="font-semibold">
+                  {match.donation.item}
+                  <span className="font-normal text-zinc-500 dark:text-zinc-400"> (qty {match.donation.quantity})</span>
+                </p>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  for: {match.request.item} ·{" "}
+                  {match.status === "accepted" ? "accepted, awaiting handoff" : "with nonprofit"}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {match.status === "accepted" && (
+                  <button
+                    onClick={() => handleAdvance(match, "handed_to_nonprofit")}
+                    className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                  >
+                    Handed to nonprofit
+                  </button>
+                )}
+                <button
+                  onClick={() => handleAdvance(match, "delivered")}
+                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+                >
+                  Mark delivered
+                </button>
               </div>
             </li>
           ))}

@@ -1,0 +1,28 @@
+# Keeps the free-tier Supabase project from auto-pausing.
+#
+# Supabase pauses free projects after ~7 days with no database activity,
+# which would take the whole app offline. GitHub runs this job on a
+# schedule; it makes one tiny read query (1 row from the public requests
+# table), which counts as activity.
+#
+# The key below is the PUBLISHABLE key — the same one every visitor's
+# browser already receives when loading the site. It can only do what the
+# RLS policies allow the public to do, so committing it here is safe.
+# (The secret/service_role key must NEVER appear in this repo.)
+
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: "17 13 * * *" # daily at 13:17 UTC (odd minute avoids GitHub's busy top-of-hour)
+  workflow_dispatch: # adds a "Run workflow" button in the Actions tab for manual runs
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query one row from the database
+        run: |
+          curl --fail --silent --show-error \
+            -H "apikey: sb_publishable_n0o1vI0ghJz3dtNgsfNm3g_dlv5honZ" \
+            "https://zebliqwgugskkjvawmhy.supabase.co/rest/v1/requests?select=id&limit=1"
