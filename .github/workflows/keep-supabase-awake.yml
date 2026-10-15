@@ -1,28 +1,39 @@
 # Keeps the free-tier Supabase project from auto-pausing.
 #
-# Supabase pauses free projects after ~7 days with no database activity,
-# which would take the whole app offline. GitHub runs this job on a
-# schedule; it makes one tiny read query (1 row from the public requests
-# table), which counts as activity.
+# Supabase pauses free projects that don't see "sufficient activity" for
+# 7 days. Version 1 (one read per day) still got a pause warning, so this
+# version runs every 6 hours and does both a read and a WRITE (the
+# heartbeat() function from migration 20).
 #
 # The key below is the PUBLISHABLE key — the same one every visitor's
 # browser already receives when loading the site. It can only do what the
-# RLS policies allow the public to do, so committing it here is safe.
+# RLS policies and public functions allow, so committing it here is safe.
 # (The secret/service_role key must NEVER appear in this repo.)
+#
+# GitHub turns off scheduled jobs after 60 days with no commits to the
+# repo, and emails a warning first — click "keep running" in that email.
 
 name: Keep Supabase awake
 
 on:
   schedule:
-    - cron: "17 13 * * *" # daily at 13:17 UTC (odd minute avoids GitHub's busy top-of-hour)
+    - cron: "17 */6 * * *" # every 6 hours, at :17 past (avoids GitHub's busy top-of-hour)
   workflow_dispatch: # adds a "Run workflow" button in the Actions tab for manual runs
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Query one row from the database
+      - name: Read one row
         run: |
           curl --fail --silent --show-error \
             -H "apikey: sb_publishable_n0o1vI0ghJz3dtNgsfNm3g_dlv5honZ" \
             "https://zebliqwgugskkjvawmhy.supabase.co/rest/v1/requests?select=id&limit=1"
+
+      - name: Write the heartbeat timestamp
+        run: |
+          curl --fail --silent --show-error -X POST \
+            -H "apikey: sb_publishable_n0o1vI0ghJz3dtNgsfNm3g_dlv5honZ" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "https://zebliqwgugskkjvawmhy.supabase.co/rest/v1/rpc/heartbeat"
