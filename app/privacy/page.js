@@ -14,7 +14,7 @@ const SECTIONS = [
   },
   {
     title: "Who can see what",
-    body: "School and league names are public alongside their requests — that visibility is the point of the platform. Donor identities are never shown publicly; a donor's name and email are revealed only to the specific team whose request they matched with, and only after both sides accept. Verification documents are visible only to administrators. Your ZIP code is never displayed to anyone; other users see only approximate distances.",
+    body: "School and league names are public alongside their requests — that visibility is the point of the platform. Donor identities are never shown publicly; a donor's name and email are revealed only to the specific team whose request they matched with, and only after both sides accept. Verification documents are visible only to administrators. A donor's ZIP code is never shown to anyone; other users see only approximate distances. School and league accounts are the exception: because being findable is the point, a school's name, city, state, and ZIP code are public.",
   },
   {
     title: "How it's protected",
